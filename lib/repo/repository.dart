@@ -103,7 +103,7 @@ class Repository {
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         final bytes = response.bodyBytes;
         final directory = await ExternalPath.getExternalStoragePublicDirectory(
-            ExternalPath.DIRECTORY_DOWNLOADS);
+            ExternalPath.DIRECTORY_DOWNLOAD);
 
         final file = File("$directory/$imageId.png");
         await file.writeAsBytes(bytes);
