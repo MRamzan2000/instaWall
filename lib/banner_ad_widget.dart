@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:startapp_sdk/startapp.dart';
 import 'ad_manager.dart';
 
-/// Drop this widget into the bottomNavigationBar slot (or bottom of a Column)
-/// on every screen to show a self-refreshing banner ad.
-///
-/// Usage:
-///   bottomNavigationBar: const BannerAdWidget(),
 class BannerAdWidget extends StatefulWidget {
   final String? adTag;
   const BannerAdWidget({super.key, this.adTag});
@@ -26,15 +21,13 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   Future<void> _loadBanner() async {
     final ad = await AdManager.instance.loadBannerAd(adTag: widget.adTag);
-    if (mounted) {
-      setState(() => _bannerAd = ad);
-    }
+    if (mounted) setState(() => _bannerAd = ad);
   }
 
   @override
   Widget build(BuildContext context) {
     if (_bannerAd == null) {
-      // Reserve space so the layout doesn't jump when the ad loads
+      // Reserve space so layout doesn't jump
       return const SizedBox(height: 50);
     }
     return SizedBox(

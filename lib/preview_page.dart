@@ -34,11 +34,16 @@ class _PreviewPageState extends State<PreviewPage> {
     setState(() => _isDownloading = false);
   }
 
-  /// Show a rewarded video; download starts only after the video completes.
+  /// Direct download — show a video interstitial before downloading.
+  void _downloadWithVideoAd() {
+    AdManager.instance.showVideoInterstitialAd(onDone: _download);
+  }
+
+  /// Rewarded download — user watches a full rewarded video to unlock.
   void _downloadWithRewardedAd() {
     if (!AdManager.instance.isRewardedReady) {
-      // No ad ready, download directly
-      _download();
+      // No rewarded ad ready — fall back to video interstitial download
+      _downloadWithVideoAd();
       return;
     }
 
@@ -46,19 +51,22 @@ class _PreviewPageState extends State<PreviewPage> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E30),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: const Text(
           'Watch & Download',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style:
+          TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'Watch a short video to unlock the download.',
+          'Watch a short video to unlock your free download.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Skip', style: TextStyle(color: Colors.white38)),
+            child: const Text('Skip',
+                style: TextStyle(color: Colors.white38)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -77,94 +85,111 @@ class _PreviewPageState extends State<PreviewPage> {
     );
   }
 
+  /// Back button — show a video interstitial when leaving the preview.
+  void _onBack() {
+    AdManager.instance.showVideoInterstitialAd(
+      onDone: () => Navigator.pop(context),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.4),
-              shape: BoxShape.circle,
+    return WillPopScope(
+      // Intercept hardware back button — show video interstitial
+      onWillPop: () async {
+        AdManager.instance.showVideoInterstitialAd(
+          onDone: () => Navigator.pop(context),
+        );
+        return false; // We handle the pop ourselves inside onDone
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leading: GestureDetector(
+            onTap: _onBack,
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.4),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_back, color: Colors.white),
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.white),
           ),
         ),
-      ),
 
-      // Full-screen wallpaper
-      body: SizedBox.expand(
-        child: CachedNetworkImage(
-          fit: BoxFit.cover,
-          imageUrl: widget.imageUrl,
-          placeholder: (_, __) => const Center(
-            child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+        // Full-screen wallpaper
+        body: SizedBox.expand(
+          child: CachedNetworkImage(
+            fit: BoxFit.cover,
+            imageUrl: widget.imageUrl,
+            placeholder: (_, __) => const Center(
+              child:
+              CircularProgressIndicator(color: Color(0xFF6C63FF)),
+            ),
+            errorWidget: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image, color: Colors.white30)),
           ),
-          errorWidget: (_, __, ___) =>
-          const Center(child: Icon(Icons.broken_image, color: Colors.white30)),
         ),
-      ),
 
-      // Bottom actions + banner
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Action bar
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withOpacity(0.85),
-                  Colors.transparent,
+        // Bottom actions + banner
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Action bar
+            Container(
+              padding:
+              EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.85),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Direct download (plays video interstitial first)
+                  _ActionButton(
+                    icon: _isDownloading
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                        : const Icon(Icons.download_rounded,
+                        color: Colors.white, size: 22),
+                    label: 'Download',
+                    color: const Color(0xFF6C63FF),
+                    onTap: _isDownloading ? null : _downloadWithVideoAd,
+                  ),
+
+                  // Rewarded ad download
+                  _ActionButton(
+                    icon: const Icon(Icons.play_circle_outline,
+                        color: Colors.white, size: 22),
+                    label: 'Free Download',
+                    color: const Color(0xFFFF6B6B),
+                    onTap: _downloadWithRewardedAd,
+                  ),
                 ],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Direct download
-                _ActionButton(
-                  icon: _isDownloading
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Icon(Icons.download_rounded,
-                      color: Colors.white, size: 22),
-                  label: 'Download',
-                  color: const Color(0xFF6C63FF),
-                  onTap: _isDownloading ? null : _download,
-                ),
 
-                // Rewarded ad download
-                _ActionButton(
-                  icon: const Icon(Icons.play_circle_outline,
-                      color: Colors.white, size: 22),
-                  label: 'Free Download',
-                  color: const Color(0xFFFF6B6B),
-                  onTap: _downloadWithRewardedAd,
-                ),
-              ],
-            ),
-          ),
-
-          // Banner ad
-          const BannerAdWidget(adTag: 'preview_screen'),
-        ],
+            // Banner ad
+            const BannerAdWidget(adTag: 'preview_screen'),
+          ],
+        ),
       ),
     );
   }
@@ -188,7 +213,8 @@ class _ActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(14),

@@ -30,22 +30,21 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Start.io App ID -->
+        <!-- Start.io App ID (production) -->
         <meta-data
             android:name="com.startapp.sdk.APPLICATION_ID"
             android:value="205204648" />
 
-        <!-- Optional: disable Return Ads (shown when user presses Back) -->
-        <!-- Uncomment the line below to turn them off -->
         <!--
-        <meta-data
-            android:name="com.startapp.sdk.RETURN_ADS_ENABLED"
-            android:value="false" />
+            ✅ RETURN ADS — shown automatically when user presses Back.
+            This is enabled by DEFAULT. Do NOT add the false override below.
+            Return Ads are one of Start.io's highest-revenue ad types.
         -->
 
-        <!-- Optional: disable Splash Ads -->
-        <!-- Uncomment the block below to turn them off -->
         <!--
+            Splash Ad — shown automatically on cold launch by Start.io SDK.
+            Also enabled by default. To disable, uncomment the block below:
+
         <provider
             android:authorities="com.startapp.flutter.sdk.${applicationId}"
             android:name="com.startapp.flutter.sdk.StartAppFlutterHelper"
@@ -58,7 +57,6 @@
 
     </application>
 
-    <!-- Required for Flutter text processing -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

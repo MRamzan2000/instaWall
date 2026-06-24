@@ -76,7 +76,6 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // App icon
                     Container(
                       width: 14.h,
                       height: 14.h,
@@ -98,10 +97,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ),
                     ),
-
                     SizedBox(height: 2.5.h),
-
-                    // App name
                     Text(
                       'InstaWall',
                       style: TextStyle(
@@ -111,10 +107,7 @@ class _SplashScreenState extends State<SplashScreen>
                         letterSpacing: 1.5,
                       ),
                     ),
-
                     SizedBox(height: 0.8.h),
-
-                    // Tagline
                     Text(
                       'Beautiful Wallpapers, Every Day',
                       style: TextStyle(
@@ -144,18 +137,15 @@ class _SplashScreenState extends State<SplashScreen>
                     child: LinearProgressIndicator(
                       backgroundColor: Colors.white12,
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFF6C63FF),
-                      ),
+                          Color(0xFF6C63FF)),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   SizedBox(height: 1.5.h),
                   Text(
                     'Loading...',
-                    style: TextStyle(
-                      color: Colors.white30,
-                      fontSize: 11.sp,
-                    ),
+                    style:
+                    TextStyle(color: Colors.white30, fontSize: 11.sp),
                   ),
                 ],
               ),

@@ -9,6 +9,7 @@ import 'ad_manager.dart';
 import 'banner_ad_widget.dart';
 import 'faviourit_wallpaper.dart';
 import 'modal/modal.dart';
+import 'native_ads_card.dart';
 import 'repo/repository.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,10 +24,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   late Future<List<Images>> _imagesFuture;
-  List<Images> _favorites = [];
+  final List<Images> _favorites = [];
 
   bool _isSearching = false;
   String _searchQuery = '';
+  bool _isBonusClaiming = false;
 
   @override
   void initState() {
@@ -40,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ── Favorites ──────────────────────────────────────────────────────────────
+  // ── Favorites ─────────────────────────────────────────────────────
 
   void _toggleFavorite(Images wallpaper) {
     setState(() {
@@ -73,23 +75,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Search ─────────────────────────────────────────────────────────────────
+  // ── Search ────────────────────────────────────────────────────────
 
   void _onSearch(String query) {
     setState(() {
       _searchQuery = query.trim();
-      if (_searchQuery.isEmpty) {
-        _imagesFuture = _repo.getImagesList(pageNumber: 1);
-      } else {
-        _imagesFuture = _repo.getImagesBySearch(query: _searchQuery);
-      }
+      _imagesFuture = _searchQuery.isEmpty
+          ? _repo.getImagesList(pageNumber: 1)
+          : _repo.getImagesBySearch(query: _searchQuery);
     });
   }
 
-  // ── Navigation with interstitial ───────────────────────────────────────────
+  // ── Navigation ────────────────────────────────────────────────────
 
+  /// Frequency-controlled: shows interstitial every 3rd wallpaper tap.
   void _navigateToPreview(Images wallpaper) {
-    AdManager.instance.showInterstitialAd(
+    AdManager.instance.showInterstitialOnFrequency(
       onDone: () => Get.to(() => PreviewPage(
         imageId: wallpaper.imageID,
         imageUrl: wallpaper.imagePotraitPath,
@@ -97,8 +98,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Favorites nav always shows a video interstitial (high eCPM).
   void _navigateToFavorites() {
-    AdManager.instance.showInterstitialAd(
+    AdManager.instance.showVideoInterstitialAd(
       onDone: () => Navigator.push(
         context,
         MaterialPageRoute(
@@ -108,7 +110,218 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── UI ─────────────────────────────────────────────────────────────────────
+  // ── Claim Bonus (Rewarded Video) ──────────────────────────────────
+
+  void _claimBonusWallpaper() {
+    if (!AdManager.instance.isRewardedReady) {
+      _showSnack('⏳ Loading ad... Please wait', Icons.timer_outlined);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E30),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+            SizedBox(width: 10),
+            Text(
+              'Claim Bonus 4K',
+              style:
+              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(2.w),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6C63FF).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: const Color(0xFF6C63FF).withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.video_library_rounded,
+                      color: const Color(0xFF6C63FF), size: 8.h),
+                  SizedBox(height: 1.h),
+                  Text(
+                    'Watch a short ad',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'to unlock a FREE 4K wallpaper!',
+                    style:
+                    TextStyle(color: Colors.white70, fontSize: 12.sp),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 1.5.h),
+            Container(
+              padding:
+              EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.star_rounded,
+                      color: Colors.amber, size: 4.w),
+                  SizedBox(width: 2.w),
+                  Expanded(
+                    child: Text(
+                      'Watch the full ad to claim your reward',
+                      style: TextStyle(
+                          color: Colors.amber, fontSize: 11.sp),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding:
+              EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _startBonusAd();
+            },
+            child: const Text('Watch Ad',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startBonusAd() {
+    setState(() => _isBonusClaiming = true);
+    _showSnack('🎬 Loading ad...', Icons.hourglass_top);
+
+    AdManager.instance.showRewardedVideoAd(
+      onReward: () {
+        setState(() => _isBonusClaiming = false);
+        _showBonusSuccessDialog();
+        _refreshWallpapers();
+      },
+    );
+
+    // Safety timeout in case ad fails silently
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted && _isBonusClaiming) {
+        setState(() => _isBonusClaiming = false);
+      }
+    });
+  }
+
+  void _showBonusSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E30),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.celebration, color: Colors.green, size: 32),
+            SizedBox(width: 10),
+            Text(
+              '🎉 Bonus Unlocked!',
+              style:
+              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(3.w),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [
+                  const Color(0xFF6C63FF).withOpacity(0.2),
+                  Colors.purple.withOpacity(0.1),
+                ]),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: const Color(0xFF6C63FF).withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.wallpaper_rounded,
+                      color: const Color(0xFF6C63FF), size: 10.h),
+                  SizedBox(height: 1.h),
+                  Text(
+                    '4K Wallpaper Added!',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Check your feed for new premium wallpapers',
+                    style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding:
+              EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Awesome!',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _refreshWallpapers() {
+    setState(() {
+      _imagesFuture = _repo.getImagesList(pageNumber: 1);
+    });
+    _showSnack('🔄 New wallpapers loaded!', Icons.refresh);
+  }
+
+  // ── UI ────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -117,13 +330,13 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          // Search bar
           _buildSearchBar(),
-          // Grid
+          const SizedBox(height: 10),
+          _buildClaimBonusButton(),
+          const SizedBox(height: 10),
           Expanded(child: _buildGrid()),
         ],
       ),
-      // Banner ad pinned at the bottom
       bottomNavigationBar: const BannerAdWidget(adTag: 'home_screen'),
     );
   }
@@ -139,7 +352,8 @@ class _HomeScreenState extends State<HomeScreen> {
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: 'Search wallpapers...',
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          hintStyle:
+          TextStyle(color: Colors.white.withOpacity(0.4)),
           border: InputBorder.none,
         ),
         onSubmitted: _onSearch,
@@ -153,7 +367,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       centerTitle: true,
       actions: [
-        // Search toggle
         IconButton(
           icon: Icon(
             _isSearching ? Icons.close : Icons.search,
@@ -169,12 +382,13 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
-        // Favorites
+        // Favorites button with badge
         Stack(
           alignment: Alignment.center,
           children: [
             IconButton(
-              icon: Icon(Icons.favorite, color: Colors.deepOrange, size: 3.h),
+              icon:
+              Icon(Icons.favorite, color: Colors.deepOrange, size: 3.h),
               onPressed: _navigateToFavorites,
             ),
             if (_favorites.isNotEmpty)
@@ -192,10 +406,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     '${_favorites.length}',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -203,6 +416,71 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         SizedBox(width: 0.5.w),
       ],
+    );
+  }
+
+  Widget _buildClaimBonusButton() {
+    return GestureDetector(
+      onTap: _isBonusClaiming ? null : _claimBonusWallpaper,
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4.w),
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [const Color(0xFF6C63FF), Colors.purple.shade700],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6C63FF).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_isBonusClaiming)
+              SizedBox(
+                width: 3.w,
+                height: 3.w,
+                child: const CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            else
+              const Icon(Icons.emoji_events_rounded,
+                  color: Colors.amber, size: 28),
+            SizedBox(width: 2.w),
+            Text(
+              _isBonusClaiming ? 'Loading...' : 'Claim Bonus',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600),
+            ),
+            if (!_isBonusClaiming) ...[
+              SizedBox(width: 2.w),
+              Container(
+                padding:
+                EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.3.h),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '4K FREE',
+                  style: TextStyle(
+                      color: Colors.amber,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -224,10 +502,8 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: 2.w),
               Text(
                 'Search wallpapers...',
-                style: TextStyle(
-                  color: Colors.white38,
-                  fontSize: 14.sp,
-                ),
+                style:
+                TextStyle(color: Colors.white38, fontSize: 14.sp),
               ),
             ],
           ),
@@ -252,10 +528,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(Icons.wifi_off, color: Colors.white30, size: 6.h),
                 SizedBox(height: 1.h),
-                Text(
-                  'Something went wrong',
-                  style: TextStyle(color: Colors.white38, fontSize: 14.sp),
-                ),
+                Text('Something went wrong',
+                    style:
+                    TextStyle(color: Colors.white38, fontSize: 14.sp)),
               ],
             ),
           );
@@ -263,30 +538,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final images = snapshot.data!;
 
+        // ── Inject native ads every 6 items ──────────────────────
+        // Build a combined list: wallpapers + native ad placeholders
+        // Every index where (index + 1) % 6 == 0 → native ad
+        final int nativeAdEvery = 6;
+        // Total combined items
+        final int combinedCount =
+            images.length + (images.length ~/ nativeAdEvery);
+
         return MasonryGridView.count(
           padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
           crossAxisCount: 2,
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
-          itemCount: images.length,
-          itemBuilder: (context, index) {
-            final wallpaper = images[index];
+          itemCount: combinedCount,
+          itemBuilder: (context, combinedIndex) {
+            // Every nativeAdEvery-th slot (after first) is a native ad
+            final adSlot = nativeAdEvery; // insert after every N items
+            final adjustedIndex = combinedIndex -
+                (combinedIndex ~/ adSlot); // wallpaper index
+            final isAdSlot = (combinedIndex + 1) % adSlot == 0;
+
+            if (isAdSlot) {
+              return const NativeAdCard(adTag: 'home_grid_native');
+            }
+
+            if (adjustedIndex >= images.length) {
+              return const SizedBox.shrink();
+            }
+
+            final wallpaper = images[adjustedIndex];
             final isFav = _favorites.contains(wallpaper);
 
             return GestureDetector(
               onTap: () => _navigateToPreview(wallpaper),
               child: Stack(
                 children: [
-                  // Image
+                  // Wallpaper image
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: CachedNetworkImage(
                       fit: BoxFit.cover,
                       imageUrl: wallpaper.imagePotraitPath,
                       placeholder: (_, __) => Container(
-                        height: 20.h,
-                        color: const Color(0xFF1E1E30),
-                      ),
+                          height: 20.h, color: const Color(0xFF1E1E30)),
                       errorWidget: (_, __, ___) => Container(
                         height: 20.h,
                         color: const Color(0xFF1E1E30),
