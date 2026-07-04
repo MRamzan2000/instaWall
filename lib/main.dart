@@ -1,15 +1,25 @@
 import 'package:InstaWall/splash_screen.dart';
+import 'package:easy_audience_network_plus/easy_audience_network.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
-import 'ad_manager.dart';
+import 'meta_ad_manager.dart';
 import 'custom_scroll_behavior.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Start.io ad manager once at app startup
-  AdManager.instance.initialize();
+
+  // ✅ Initialize with EasyAudienceNetwork
+  EasyAudienceNetwork.init(
+    // testingId: "9bfaea4f-d8ee-4e0c-a4b6-7c6f3952d348",
+    testMode: false,  // ← false for real ads
+    iOSAdvertiserTrackingEnabled: false,
+  );
+
+  // ✅ Initialize with testMode: false (Real ads)
+  MetaAdManager().initialize(testMode: false);
+
   runApp(const MainApp());
 }
 

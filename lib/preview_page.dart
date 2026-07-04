@@ -34,15 +34,12 @@ class _PreviewPageState extends State<PreviewPage> {
     setState(() => _isDownloading = false);
   }
 
-  /// Direct download — show a video interstitial before downloading.
   void _downloadWithVideoAd() {
     AdManager.instance.showVideoInterstitialAd(onDone: _download);
   }
 
-  /// Rewarded download — user watches a full rewarded video to unlock.
   void _downloadWithRewardedAd() {
     if (!AdManager.instance.isRewardedReady) {
-      // No rewarded ad ready — fall back to video interstitial download
       _downloadWithVideoAd();
       return;
     }
@@ -76,7 +73,10 @@ class _PreviewPageState extends State<PreviewPage> {
             ),
             onPressed: () {
               Navigator.pop(context);
-              AdManager.instance.showRewardedVideoAd(onReward: _download);
+              AdManager.instance.showRewardedVideoAd(
+                onReward: _download,
+                onDone: () => debugPrint('Rewarded ad done'),
+              );
             },
             child: const Text('Watch Ad'),
           ),
@@ -85,7 +85,6 @@ class _PreviewPageState extends State<PreviewPage> {
     );
   }
 
-  /// Back button — show a video interstitial when leaving the preview.
   void _onBack() {
     AdManager.instance.showVideoInterstitialAd(
       onDone: () => Navigator.pop(context),
@@ -95,12 +94,11 @@ class _PreviewPageState extends State<PreviewPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Intercept hardware back button — show video interstitial
       onWillPop: () async {
         AdManager.instance.showVideoInterstitialAd(
           onDone: () => Navigator.pop(context),
         );
-        return false; // We handle the pop ourselves inside onDone
+        return false;
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -122,8 +120,6 @@ class _PreviewPageState extends State<PreviewPage> {
             ),
           ),
         ),
-
-        // Full-screen wallpaper
         body: SizedBox.expand(
           child: CachedNetworkImage(
             fit: BoxFit.cover,
@@ -136,12 +132,9 @@ class _PreviewPageState extends State<PreviewPage> {
                 child: Icon(Icons.broken_image, color: Colors.white30)),
           ),
         ),
-
-        // Bottom actions + banner
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Action bar
             Container(
               padding:
               EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
@@ -158,7 +151,6 @@ class _PreviewPageState extends State<PreviewPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Direct download (plays video interstitial first)
                   _ActionButton(
                     icon: _isDownloading
                         ? const SizedBox(
@@ -173,8 +165,6 @@ class _PreviewPageState extends State<PreviewPage> {
                     color: const Color(0xFF6C63FF),
                     onTap: _isDownloading ? null : _downloadWithVideoAd,
                   ),
-
-                  // Rewarded ad download
                   _ActionButton(
                     icon: const Icon(Icons.play_circle_outline,
                         color: Colors.white, size: 22),
@@ -185,8 +175,6 @@ class _PreviewPageState extends State<PreviewPage> {
                 ],
               ),
             ),
-
-            // Banner ad
             const BannerAdWidget(adTag: 'preview_screen'),
           ],
         ),

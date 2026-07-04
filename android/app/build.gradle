@@ -13,7 +13,6 @@ if (localPropertiesFile.exists()) {
     }
 }
 
-// ✅ Keystore Properties
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 
@@ -45,7 +44,6 @@ android {
         versionName flutterVersionName
     }
 
-    // ✅ Signing Config
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
@@ -58,6 +56,9 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
         }
     }
 }
@@ -68,4 +69,6 @@ flutter {
 
 dependencies {
     implementation 'com.google.android.material:material:1.9.0'
+    // ✅ Update to latest SDK
+    implementation 'com.facebook.android:audience-network-sdk:6.21.0'
 }

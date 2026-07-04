@@ -9,7 +9,6 @@ import 'ad_manager.dart';
 import 'banner_ad_widget.dart';
 import 'faviourit_wallpaper.dart';
 import 'modal/modal.dart';
-import 'native_ads_card.dart';
 import 'repo/repository.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -88,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Navigation ────────────────────────────────────────────────────
 
-  /// Frequency-controlled: shows interstitial every 3rd wallpaper tap.
   void _navigateToPreview(Images wallpaper) {
     AdManager.instance.showInterstitialOnFrequency(
       onDone: () => Get.to(() => PreviewPage(
@@ -98,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Favorites nav always shows a video interstitial (high eCPM).
   void _navigateToFavorites() {
     AdManager.instance.showVideoInterstitialAd(
       onDone: () => Navigator.push(
@@ -114,7 +111,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _claimBonusWallpaper() {
     if (!AdManager.instance.isRewardedReady) {
-      _showSnack('⏳ Loading ad... Please wait', Icons.timer_outlined);
+      // Show interstitial instead of claiming bonus
+      _showSnack('🎬 Loading ad...', Icons.hourglass_top);
+      AdManager.instance.showInterstitialAd(
+        onDone: () {
+          _showSnack('Enjoy your bonus wallpaper!', Icons.check_circle);
+          _refreshWallpapers();
+        },
+      );
       return;
     }
 
@@ -123,16 +127,14 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E30),
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
             Icon(Icons.emoji_events, color: Colors.amber, size: 28),
             SizedBox(width: 10),
             Text(
               'Claim Bonus 4K',
-              style:
-              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -161,16 +163,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     'to unlock a FREE 4K wallpaper!',
-                    style:
-                    TextStyle(color: Colors.white70, fontSize: 12.sp),
+                    style: TextStyle(color: Colors.white70, fontSize: 12.sp),
                   ),
                 ],
               ),
             ),
             SizedBox(height: 1.5.h),
             Container(
-              padding:
-              EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+              padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
               decoration: BoxDecoration(
                 color: Colors.amber.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
@@ -178,14 +178,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.star_rounded,
-                      color: Colors.amber, size: 4.w),
+                  Icon(Icons.star_rounded, color: Colors.amber, size: 4.w),
                   SizedBox(width: 2.w),
                   Expanded(
                     child: Text(
                       'Watch the full ad to claim your reward',
-                      style: TextStyle(
-                          color: Colors.amber, fontSize: 11.sp),
+                      style: TextStyle(color: Colors.amber, fontSize: 11.sp),
                     ),
                   ),
                 ],
@@ -204,8 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: const Color(0xFF6C63FF),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
-              padding:
-              EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
             ),
             onPressed: () {
               Navigator.pop(context);
@@ -230,9 +227,14 @@ class _HomeScreenState extends State<HomeScreen> {
         _showBonusSuccessDialog();
         _refreshWallpapers();
       },
+      onDone: () {
+        if (mounted) {
+          setState(() => _isBonusClaiming = false);
+        }
+      },
     );
 
-    // Safety timeout in case ad fails silently
+    // Safety timeout
     Future.delayed(const Duration(seconds: 30), () {
       if (mounted && _isBonusClaiming) {
         setState(() => _isBonusClaiming = false);
@@ -246,16 +248,14 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E30),
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
             Icon(Icons.celebration, color: Colors.green, size: 32),
             SizedBox(width: 10),
             Text(
               '🎉 Bonus Unlocked!',
-              style:
-              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -301,8 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: const Color(0xFF6C63FF),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
-              padding:
-              EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+              padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
             ),
             onPressed: () => Navigator.pop(context),
             child: const Text('Awesome!',
@@ -352,8 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: 'Search wallpapers...',
-          hintStyle:
-          TextStyle(color: Colors.white.withOpacity(0.4)),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
           border: InputBorder.none,
         ),
         onSubmitted: _onSearch,
@@ -382,13 +380,11 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
-        // Favorites button with badge
         Stack(
           alignment: Alignment.center,
           children: [
             IconButton(
-              icon:
-              Icon(Icons.favorite, color: Colors.deepOrange, size: 3.h),
+              icon: Icon(Icons.favorite, color: Colors.deepOrange, size: 3.h),
               onPressed: _navigateToFavorites,
             ),
             if (_favorites.isNotEmpty)
@@ -463,8 +459,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (!_isBonusClaiming) ...[
               SizedBox(width: 2.w),
               Container(
-                padding:
-                EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.3.h),
+                padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.3.h),
                 decoration: BoxDecoration(
                   color: Colors.amber.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
@@ -502,8 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: 2.w),
               Text(
                 'Search wallpapers...',
-                style:
-                TextStyle(color: Colors.white38, fontSize: 14.sp),
+                style: TextStyle(color: Colors.white38, fontSize: 14.sp),
               ),
             ],
           ),
@@ -529,8 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.wifi_off, color: Colors.white30, size: 6.h),
                 SizedBox(height: 1.h),
                 Text('Something went wrong',
-                    style:
-                    TextStyle(color: Colors.white38, fontSize: 14.sp)),
+                    style: TextStyle(color: Colors.white38, fontSize: 14.sp)),
               ],
             ),
           );
@@ -538,43 +531,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final images = snapshot.data!;
 
-        // ── Inject native ads every 6 items ──────────────────────
-        // Build a combined list: wallpapers + native ad placeholders
-        // Every index where (index + 1) % 6 == 0 → native ad
-        final int nativeAdEvery = 6;
-        // Total combined items
-        final int combinedCount =
-            images.length + (images.length ~/ nativeAdEvery);
-
         return MasonryGridView.count(
           padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
           crossAxisCount: 2,
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
-          itemCount: combinedCount,
-          itemBuilder: (context, combinedIndex) {
-            // Every nativeAdEvery-th slot (after first) is a native ad
-            final adSlot = nativeAdEvery; // insert after every N items
-            final adjustedIndex = combinedIndex -
-                (combinedIndex ~/ adSlot); // wallpaper index
-            final isAdSlot = (combinedIndex + 1) % adSlot == 0;
-
-            if (isAdSlot) {
-              return const NativeAdCard(adTag: 'home_grid_native');
-            }
-
-            if (adjustedIndex >= images.length) {
-              return const SizedBox.shrink();
-            }
-
-            final wallpaper = images[adjustedIndex];
+          itemCount: images.length,
+          itemBuilder: (context, index) {
+            final wallpaper = images[index];
             final isFav = _favorites.contains(wallpaper);
 
             return GestureDetector(
               onTap: () => _navigateToPreview(wallpaper),
               child: Stack(
                 children: [
-                  // Wallpaper image
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: CachedNetworkImage(
@@ -590,8 +560,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-
-                  // Gradient overlay
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -614,8 +582,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-
-                  // Favorite button
                   Positioned(
                     top: 6,
                     right: 6,

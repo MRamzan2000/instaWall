@@ -14,7 +14,6 @@ class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key, required this.favorites});
 
   void _openPreview(BuildContext context, Images wallpaper) {
-    // Video interstitial when opening a wallpaper from Favorites (high eCPM)
     AdManager.instance.showVideoInterstitialAd(
       onDone: () => Get.to(() => PreviewPage(
         imageId: wallpaper.imageID,
@@ -26,7 +25,6 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Show interstitial when pressing back from Favorites
       onWillPop: () async {
         AdManager.instance.showInterstitialAd(
           onDone: () => Navigator.pop(context),
