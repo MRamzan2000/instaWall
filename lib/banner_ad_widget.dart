@@ -20,20 +20,28 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     _loadAd();
   }
 
-  void _loadAd() {
+  void _loadAd({bool useTest = false}) {
     _bannerAd = BannerAd(
-      adUnitId: AdMobConfig.bannerAdUnitId,
+      adUnitId: useTest ? AdMobConfig.testBannerId : AdMobConfig.androidBannerId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          setState(() {
-            _isLoaded = true;
-          });
+          debugPrint('BannerAd loaded (${useTest ? "TEST" : "REAL"})');
+          if (mounted) {
+            setState(() {
+              _isLoaded = true;
+            });
+          }
         },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
           debugPrint('BannerAd failed to load: $error');
+          // ✅ Fallback to test ad if real fails
+          if (!useTest && mounted) {
+            debugPrint('🔄 Retrying BannerAd with TEST ID...');
+            _loadAd(useTest: true);
+          }
         },
       ),
     )..load();
@@ -51,12 +59,14 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      alignment: Alignment.center,
-      width: _bannerAd!.size.width.toDouble(),
-      height: _bannerAd!.size.height.toDouble(),
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: AdWidget(ad: _bannerAd!),
+    return SafeArea(
+      child: Container(
+        alignment: Alignment.center,
+        width: _bannerAd!.size.width.toDouble(),
+        height: _bannerAd!.size.height.toDouble(),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        child: AdWidget(ad: _bannerAd!),
+      ),
     );
   }
 }

@@ -1,10 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdMobConfig {
-  static const bool useTestAds = true;
-
-  // IDs from screenshots
+  // ✅ REAL IDs (From your account)
   static const String androidAppOpenId = 'ca-app-pub-1565162979143073/2047431996';
   static const String androidBannerId = 'ca-app-pub-1565162979143073/4560442514';
   static const String androidInterstitialId = 'ca-app-pub-1565162979143073/3247360841';
@@ -12,10 +11,13 @@ class AdMobConfig {
   static const String androidRewardedInterstitialId = 'ca-app-pub-1565162979143073/9051824042';
   static const String androidNativeId = 'ca-app-pub-1565162979143073/3360516664';
 
-  static String get appOpenAdUnitId => useTestAds ? 'ca-app-pub-3940256099942544/9257395921' : androidAppOpenId;
-  static String get bannerAdUnitId => useTestAds ? 'ca-app-pub-3940256099942544/6300978111' : androidBannerId;
-  static String get interstitialAdUnitId => useTestAds ? 'ca-app-pub-3940256099942544/1033173712' : androidInterstitialId;
-  static String get rewardedAdUnitId => useTestAds ? 'ca-app-pub-3940256099942544/5224354917' : androidRewardedId;
+  // ✅ TEST IDs (Google Standard)
+  static const String testAppOpenId = 'ca-app-pub-3940256099942544/9257395921';
+  static const String testBannerId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String testInterstitialId = 'ca-app-pub-3940256099942544/1033173712';
+  static const String testRewardedId = 'ca-app-pub-3940256099942544/5224354917';
+  static const String testRewardedInterstitialId = 'ca-app-pub-3940256099942544/5354046379';
+  static const String testNativeId = 'ca-app-pub-3940256099942544/2247696110';
 }
 
 class AdMobService {
@@ -43,17 +45,24 @@ class AdMobService {
 
   // ── App Open Ad ──────────────────────────────────────────────────
 
-  void loadAppOpenAd() {
+  void loadAppOpenAd({bool useTest = false}) {
     AppOpenAd.load(
-      adUnitId: AdMobConfig.appOpenAdUnitId,
+      adUnitId: useTest ? AdMobConfig.testAppOpenId : AdMobConfig.androidAppOpenId,
       request: const AdRequest(),
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
+          debugPrint('AppOpenAd loaded (${useTest ? "TEST" : "REAL"})');
           _appOpenLoadTime = DateTime.now();
           _appOpenAd = ad;
         },
         onAdFailedToLoad: (error) {
           debugPrint('AppOpenAd failed to load: $error');
+          _appOpenAd = null;
+          // ✅ Fallback to test ad if real fails
+          if (!useTest) {
+            debugPrint('🔄 Retrying AppOpenAd with TEST ID...');
+            loadAppOpenAd(useTest: true);
+          }
         },
       ),
     );
@@ -63,41 +72,69 @@ class AdMobService {
       _appOpenLoadTime != null &&
       DateTime.now().difference(_appOpenLoadTime!) < const Duration(hours: 4);
 
-  void showAppOpenAdIfAvailable() {
-    if (_isShowingAppOpenAd) return;
+  Future<void> showAppOpenAdIfAvailable({VoidCallback? onDismissed}) async {
+    if (_isShowingAppOpenAd) {
+      onDismissed?.call();
+      return;
+    }
     if (!_isAppOpenAdAvailable) {
       loadAppOpenAd();
+      onDismissed?.call();
       return;
     }
 
     _appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) => _isShowingAppOpenAd = true,
+      onAdShowedFullScreenContent: (ad) {
+        _isShowingAppOpenAd = true;
+      },
       onAdDismissedFullScreenContent: (ad) {
         _isShowingAppOpenAd = false;
         ad.dispose();
         _appOpenAd = null;
         loadAppOpenAd();
+        onDismissed?.call();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         _isShowingAppOpenAd = false;
         ad.dispose();
         _appOpenAd = null;
         loadAppOpenAd();
+        onDismissed?.call();
       },
     );
-    _appOpenAd!.show();
+    await _appOpenAd!.show();
+  }
+
+  /// Special method for Splash screen to wait for the ad
+  Future<void> showAppOpenAdOnStart() async {
+    int retryCount = 0;
+    // Wait up to 5 seconds for the ad to load if it's not ready
+    while (!_isAppOpenAdAvailable && retryCount < 5) {
+      await Future.delayed(const Duration(seconds: 1));
+      retryCount++;
+    }
+
+    if (_isAppOpenAdAvailable) {
+      Completer<void> completer = Completer<void>();
+      await showAppOpenAdIfAvailable(onDismissed: () {
+        if (!completer.isCompleted) completer.complete();
+      });
+      return completer.future;
+    }
   }
 
   // ── Interstitial Ad ──────────────────────────────────────────────
 
-  void loadInterstitialAd() {
+  void loadInterstitialAd({bool useTest = false}) {
     if (_isInterstitialLoading || _interstitialAd != null) return;
     _isInterstitialLoading = true;
+
     InterstitialAd.load(
-      adUnitId: AdMobConfig.interstitialAdUnitId,
+      adUnitId: useTest ? AdMobConfig.testInterstitialId : AdMobConfig.androidInterstitialId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          debugPrint('InterstitialAd loaded (${useTest ? "TEST" : "REAL"})');
           _interstitialAd = ad;
           _isInterstitialLoading = false;
         },
@@ -105,6 +142,11 @@ class AdMobService {
           _isInterstitialLoading = false;
           _interstitialAd = null;
           debugPrint('InterstitialAd failed to load: $error');
+          // ✅ Fallback to test ad if real fails
+          if (!useTest) {
+            debugPrint('🔄 Retrying InterstitialAd with TEST ID...');
+            loadInterstitialAd(useTest: true);
+          }
         },
       ),
     );
@@ -117,33 +159,40 @@ class AdMobService {
       return;
     }
 
+    final completer = Completer<void>();
+
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _interstitialAd = null;
         loadInterstitialAd();
         onDone?.call();
+        if (!completer.isCompleted) completer.complete();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _interstitialAd = null;
         loadInterstitialAd();
         onDone?.call();
+        if (!completer.isCompleted) completer.complete();
       },
     );
-    _interstitialAd!.show();
+    await _interstitialAd!.show();
+    return completer.future;
   }
 
   // ── Rewarded Ad ──────────────────────────────────────────────────
 
-  void loadRewardedAd() {
+  void loadRewardedAd({bool useTest = false}) {
     if (_isRewardedLoading || _rewardedAd != null) return;
     _isRewardedLoading = true;
+
     RewardedAd.load(
-      adUnitId: AdMobConfig.rewardedAdUnitId,
+      adUnitId: useTest ? AdMobConfig.testRewardedId : AdMobConfig.androidRewardedId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
+          debugPrint('RewardedAd loaded (${useTest ? "TEST" : "REAL"})');
           _rewardedAd = ad;
           _isRewardedLoading = false;
         },
@@ -151,6 +200,11 @@ class AdMobService {
           _isRewardedLoading = false;
           _rewardedAd = null;
           debugPrint('RewardedAd failed to load: $error');
+          // ✅ Fallback to test ad if real fails
+          if (!useTest) {
+            debugPrint('🔄 Retrying RewardedAd with TEST ID...');
+            loadRewardedAd(useTest: true);
+          }
         },
       ),
     );
@@ -168,23 +222,32 @@ class AdMobService {
       return;
     }
 
+    final completer = Completer<void>();
+    bool earnedReward = false;
+
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _rewardedAd = null;
         loadRewardedAd();
+        if (earnedReward) {
+          onReward();
+        }
         onDone?.call();
+        if (!completer.isCompleted) completer.complete();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _rewardedAd = null;
         loadRewardedAd();
         onDone?.call();
+        if (!completer.isCompleted) completer.complete();
       },
     );
 
     await _rewardedAd!.show(onUserEarnedReward: (ad, reward) {
-      onReward();
+      earnedReward = true;
     });
+    return completer.future;
   }
 }

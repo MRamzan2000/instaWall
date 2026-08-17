@@ -34,10 +34,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      // ✅ Show App Open Ad on first launch
-      AdMobService.instance.showAppOpenAdIfAvailable();
-      Get.off(() => const HomeScreen());
+    Future.delayed(const Duration(seconds: 3), () async {
+      // ✅ Wait and Show App Open Ad on first launch
+      await AdMobService.instance.showAppOpenAdOnStart();
+      if (mounted) {
+        Get.off(() => const HomeScreen());
+      }
     });
   }
 
