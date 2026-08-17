@@ -1,50 +1,59 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'meta_ad_manager.dart';
+import 'ad_mob_service.dart';
 
-/// Combined Ad Manager - uses Meta Audience Network
+/// Professional Ad Manager - Bridges to AdMobService
 class AdManager {
   AdManager._internal();
   static final AdManager instance = AdManager._internal();
-
-  final MetaAdManager _meta = MetaAdManager();
 
   /// Show interstitial every N wallpaper taps
   static const int _interstitialFrequency = 3;
   int _tapsSinceLastInterstitial = 0;
 
+  DateTime? _lastAdTime;
+  static const Duration _cooldown = Duration(minutes: 1);
+
   // ── Getters ──────────────────────────────────────────────────────
 
-  bool get isRewardedReady => _meta.isRewardedReady;
+  bool get isRewardedReady => AdMobService.instance.isRewardedReady;
 
   // ── Interstitial ──────────────────────────────────────────────────
 
   Future<void> showInterstitialOnFrequency({VoidCallback? onDone}) async {
     _tapsSinceLastInterstitial++;
-    if (_tapsSinceLastInterstitial >= _interstitialFrequency &&
-        _meta.isInterstitialReady) {
+    
+    // Check frequency and cooldown to avoid overloading user
+    bool canShow = _tapsSinceLastInterstitial >= _interstitialFrequency;
+    bool cooledDown = _lastAdTime == null || 
+        DateTime.now().difference(_lastAdTime!) > _cooldown;
+
+    if (canShow && cooledDown) {
       _tapsSinceLastInterstitial = 0;
-      await _meta.showInterstitial(onDone: onDone);
+      _lastAdTime = DateTime.now();
+      await AdMobService.instance.showInterstitialAd(onDone: onDone);
     } else {
       onDone?.call();
     }
   }
 
   Future<void> showInterstitialAd({VoidCallback? onDone}) async {
-    await _meta.showInterstitial(onDone: onDone);
+    await AdMobService.instance.showInterstitialAd(onDone: onDone);
+    _lastAdTime = DateTime.now();
   }
 
+  /// Compatibility for legacy code
   Future<void> showVideoInterstitialAd({VoidCallback? onDone}) async {
-    await _meta.showInterstitial(onDone: onDone);
+    await showInterstitialAd(onDone: onDone);
   }
 
   // ── Rewarded Video ───────────────────────────────────────────────
 
   Future<void> showRewardedVideoAd({
-    VoidCallback? onReward,
+    required VoidCallback onReward,
     VoidCallback? onDone,
   }) async {
-    await _meta.showRewardedVideo(
+    await AdMobService.instance.showRewardedAd(
       onReward: onReward,
       onDone: onDone,
     );

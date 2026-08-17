@@ -89,21 +89,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToPreview(Images wallpaper) {
     AdManager.instance.showInterstitialOnFrequency(
-      onDone: () => Get.to(() => PreviewPage(
-        imageId: wallpaper.imageID,
-        imageUrl: wallpaper.imagePotraitPath,
-      )),
+      onDone: () {
+        if (mounted) {
+          Get.to(() => PreviewPage(
+                imageId: wallpaper.imageID,
+                imageUrl: wallpaper.imagePotraitPath,
+              ));
+        }
+      },
     );
   }
 
   void _navigateToFavorites() {
-    AdManager.instance.showVideoInterstitialAd(
-      onDone: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FavoritesScreen(favorites: _favorites),
-        ),
-      ),
+    AdManager.instance.showInterstitialAd(
+      onDone: () {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FavoritesScreen(favorites: _favorites),
+            ),
+          );
+        }
+      },
     );
   }
 

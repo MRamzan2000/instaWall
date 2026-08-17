@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
 import 'Home_screen.dart';
+import 'ad_mob_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,6 +35,8 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     Future.delayed(const Duration(seconds: 3), () {
+      // ✅ Show App Open Ad on first launch
+      AdMobService.instance.showAppOpenAdIfAvailable();
       Get.off(() => const HomeScreen());
     });
   }

@@ -16,6 +16,7 @@ dependencies:
   get: ^4.6.6
   external_path: ^2.2.0
   media_scanner: ^2.2.1
+  google_mobile_ads: ^5.2.0
 
   # ✅ Changed from facebook_audience_network_plus to easy_audience_network_plus
   easy_audience_network_plus: ^1.1.0

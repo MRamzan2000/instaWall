@@ -1,0 +1,8 @@
+- `[x]` Update `pubspec.yaml` with `google_mobile_ads`
+- `[x]` Configure `AndroidManifest.xml` with AdMob App ID
+- `[x]` Create `lib/ad_mob_service.dart` with centralized configuration and service logic
+- `[x]` Update `lib/ad_manager.dart` to bridge to `AdMobService`
+- `[x]` Update `lib/banner_ad_widget.dart` for AdMob
+- `[x]` Initialize AdMob in `lib/main.dart` and add App Open Ad lifecycle observer
+- `[x]` Update `lib/Home_screen.dart` and `lib/splash_screen.dart` for seamless ad transitions
+- `[x]` Verify build and functionality

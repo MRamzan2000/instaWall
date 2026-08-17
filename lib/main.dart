@@ -1,30 +1,47 @@
 import 'package:InstaWall/splash_screen.dart';
-import 'package:easy_audience_network_plus/easy_audience_network.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
-import 'meta_ad_manager.dart';
+import 'ad_mob_service.dart';
 import 'custom_scroll_behavior.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Initialize with EasyAudienceNetwork
-  EasyAudienceNetwork.init(
-    // testingId: "9bfaea4f-d8ee-4e0c-a4b6-7c6f3952d348",
-    testMode: false,  // ← false for real ads
-    iOSAdvertiserTrackingEnabled: false,
-  );
-
-  // ✅ Initialize with testMode: false (Real ads)
-  MetaAdManager().initialize(testMode: false);
+  // ✅ Initialize AdMob
+  await AdMobService.instance.init();
 
   runApp(const MainApp());
 }
 
-class MainApp extends StatelessWidget {
+class MainApp extends StatefulWidget {
   const MainApp({super.key});
+
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // ✅ Handle App Open Ad on Resume
+    if (state == AppLifecycleState.resumed) {
+      AdMobService.instance.showAppOpenAdIfAvailable();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
